@@ -1,3 +1,6 @@
+"""
+Calculate mean aes scores for each dimension of each system
+"""
 import json
 
 SYS_NANE=[

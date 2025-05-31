@@ -35,6 +35,5 @@ if __name__ == "__main__":
             wav_files = find_wav_files(search_directory)
             print(f"Found {len(wav_files)} files.")
 
-            # 保存为 JSONL 文件
             save_to_jsonl(wav_files, output_jsonl_file)
             print(f"Files are saved at {output_jsonl_file}")

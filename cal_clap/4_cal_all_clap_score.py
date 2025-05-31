@@ -1,3 +1,6 @@
+"""
+Calculate clap scores for all wav samples
+"""
 from msclap import CLAP
 import json
 from typing import List
@@ -5,7 +8,6 @@ import torch
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]='1'
 
-# prompt file path
 ACC_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/acc_prompt.json"
 GENERAL_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/generalization_prompt.json"
 ROBUSTNESS_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/robustness_prompt.json"
@@ -16,7 +18,7 @@ def load_prompts(prompt_path: str) -> dict:
         prompts = json.load(f)
     return {prompt['id']: prompt['prompt_text'] for prompt in prompts}
 
-# prompts字典,key:"prompt_0001", value:"text description"
+# key:"prompt_0001", value:"text description"
 acc_prompts = load_prompts(ACC_PROMPT_PATH)
 general_prompts = load_prompts(GENERAL_PROMPT_PATH)
 robustness_prompts = load_prompts(ROBUSTNESS_PROMPT_PATH)
@@ -41,19 +43,17 @@ def cal_clap_score_for_jsonl(input_jsonl_path: str, result_jsonl: str):
         for line in f:
             data = json.loads(line)
             file_path = data['path']    
-            # "/home/liucheng/project/tta-benchmark/samples/stable_audio/robustness/S008_P2041.wav"
             # get prompt text
-            prompt_id = file_path.split('/')[-1].split('_')[1].replace('.wav', '').replace("P","")  # "0001"
+            prompt_id = file_path.split('/')[-1].split('_')[1].replace('.wav', '').replace("P","")
             prompt_text = get_prompt_text(prompt_id)
             
-            # get audio_embeddings,text_embeddings
+            # get audio_embeddings & text_embeddings
             audio_embedding = clap_model.get_audio_embeddings([file_path])
             text_embedding = clap_model.get_text_embeddings([prompt_text])
 
             similarity_score = torch.nn.functional.cosine_similarity(audio_embedding, text_embedding).item()
             print(f"similarity_score: {similarity_score}")
 
-            # 写output:jsonl, {"CLAP": xxx}
             with open(result_jsonl, 'a', encoding='utf-8') as outfile:
                 json.dump({"CLAP":similarity_score}, outfile)
                 outfile.write('\n')

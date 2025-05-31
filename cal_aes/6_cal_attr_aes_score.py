@@ -1,3 +1,6 @@
+"""
+Calculate mean aes scores for each attribute of each dimension of each system
+"""
 import json
 # prompt path
 ACC_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/acc_prompt.json"
@@ -6,7 +9,6 @@ ROBUSTNESS_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/robustness
 FAIRNESS_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/fairness_prompt_new.json"
 
 def load_prompts(prompt_path: str, target_field: str) -> dict:
-    """加载prompt文件中的目标字段"""
     with open(prompt_path, 'r', encoding='utf-8') as f:
         prompts = json.load(f)
     return {prompt_data['id']: prompt_data[target_field] for prompt_data in prompts}
@@ -52,7 +54,6 @@ if __name__ == "__main__":
 
     for sys_name in SYS_NANE:
         for eval_dim in EVAL_DIM:
-            # 遍历指定系统、指定维度的prepared_jsonl和aes_results，对应行上是文件路径+AES分数
             temp = sys_name + '_' + eval_dim
             """
             e.g.
@@ -62,23 +63,18 @@ if __name__ == "__main__":
             input_jsonl = f'/home/liucheng/project/tta-benchmark/audiobox-aesthetics/prepared_jsonl/{temp}.jsonl'
             score_jsonl = f'/home/liucheng/project/tta-benchmark/audiobox-aesthetics/aes_results/{temp}.jsonl'
 
-            # 存储结果：键是prompt_attr，每个键对应的值是一个包含 total_ce、total_cu、total_pc、total_pq 和 count 的字典
+            # key:prompt_attr,value:{key:total_ce/cu/pc/pq/count,value}
             results = {}
 
-            # 打开两个文件
             with open(input_jsonl, 'r') as input_file, open(score_jsonl, 'r') as score_file:
                 for input_line, score_line in zip(input_file, score_file):
                     input_data = json.loads(input_line)  # {"path": "/home/liucheng/project/tta-benchmark/samples/audiogen/acc/S001_P0422.wav"}
                     score_data = json.loads(score_line)  # {"CE": 2.626478672027588, "CU": 4.120411396026611, "PC": 3.2657086849212646, "PQ": 4.992600440979004}
 
                     file_path = input_data['path']
-                    # 提取prompt编号
                     prompt_id = file_path.split('/')[-1].split('_')[1].replace('.wav', '').replace("P","")  # "0001"
-                    # 获取对应的属性
                     prompt_attr = get_prompt_attr(prompt_id)
-                    # print("prompt_id:", prompt_id, ",prompt_attr:", prompt_attr)
 
-                    # 每个属性对应一组total分数，如果当前属性还没有初始化，初始化它
                     if prompt_attr not in results:
                         results[prompt_attr] = {
                             'total_ce': 0,
@@ -88,14 +84,12 @@ if __name__ == "__main__":
                             'count': 0
                         }
 
-                    # 当前属性已经被初始化,累加分数
                     results[prompt_attr]['total_ce'] += score_data['CE']
                     results[prompt_attr]['total_cu'] += score_data['CU']
                     results[prompt_attr]['total_pc'] += score_data['PC']
                     results[prompt_attr]['total_pq'] += score_data['PQ']
                     results[prompt_attr]['count'] += 1
 
-            # 计算平均值,输出结果,并写入文件
             with open(output_txt, 'a') as output_file:
                 for attr, data in results.items():
                     count = data['count']
@@ -113,11 +107,11 @@ if __name__ == "__main__":
                     print(f"Average CU: {avg_cu}")
                     print(f"Average PC: {avg_pc}")
                     print(f"Average PQ: {avg_pq}")
-                    # 写入结果到文件
+                    
                     output_file.write(f"====={temp}_{attr}=====\n")
                     output_file.write(f"count: {count}\n")
                     output_file.write(f"Average CE: {avg_ce}\n")
                     output_file.write(f"Average CU: {avg_cu}\n")
                     output_file.write(f"Average PC: {avg_pc}\n")
                     output_file.write(f"Average PQ: {avg_pq}\n")
-                    output_file.write("\n")  # 添加一个空行分隔不同属性的结果
+                    output_file.write("\n")

@@ -1,4 +1,4 @@
-<<<<<<< HEAD
+
 # 📦 TTA-Bench-tools
 
 > A comprehensive benchmark for text-to-audio (TTA) generation evaluation.
@@ -25,31 +25,32 @@ Text-to-Audio (TTA) generation has made rapid progress, but current evaluation m
 git clone https://github.com/lcc-404/TTA-Bench-tools.git
 cd ./TTA-Bench-tools
 ```
-###  Prepare input in Audiobox-aesthetic style
+### 1. Prepare input in Audiobox-aesthetic style
 ```bash
-sh prepare_input.sh
+python ./cal_aes/1_prepare_input.py
 ```
 
 ### 2. Calculate AES scores
 ```bash
-sh cal_aes.sh
+python ./cal_aes/2_cal_all_aes_score.py
+python ./cal_aes/3_cal_mean_aes_score.py
+python ./cal_aes/6_cal_attr_aes_score.py
 ```
-You will get AES scores both in system-level for both dimension and attributess.
-
 
 ### 3. Calculate CLAP scores
 ```bash
-sh cal_clap.sh
+python ./cal_clap/4_cal_all_clap_score.py
+python ./cal_clap/5_cal_mean_clap_score.py
+python ./cal_clap/7_cal_attr_clap_score.py
 ```
-You will get AES scores both in system-level for both dimension and attributess.
+
+You will get AES scores and CLAP scores in both dimension-level and attribute-level for each system.
+
 
 
 ## 🙏 Acknowledgements
 
-We would like to thank the following projects, datasets, and contributors that made this work possible:
+We would like to thank the following projects that made this work possible:
 
 - [Audiobox-aesthetic](https://github.com/facebookresearch/audiobox-aesthetics)
 - [CLAP](https://github.com/microsoft/CLAP)
-
-
-

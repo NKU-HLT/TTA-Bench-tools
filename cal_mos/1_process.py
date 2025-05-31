@@ -22,7 +22,6 @@ import pandas as pd
 
 
 def get_dimension(prompt_id: int) -> str:
-    """根据prompt编号获取对应的维度"""
     for dim, (start, end) in EVAL_DIM.items():
         if start <= prompt_id <= end:
             return dim

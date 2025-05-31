@@ -1,12 +1,14 @@
+"""
+Calculate mean clap scores for each attribute of each dimension of each system
+"""
 import json
-# prompt file path
+
 ACC_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/acc_prompt.json"
 GENERAL_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/generalization_prompt.json"
 ROBUSTNESS_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/robustness_prompt.json"
 FAIRNESS_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/fairness_prompt_new.json"
 
 def load_prompts(prompt_path: str, target_field: str) -> dict:
-    """加载prompt文件中的目标字段"""
     with open(prompt_path, 'r', encoding='utf-8') as f:
         prompts = json.load(f)
     return {prompt_data['id']: prompt_data[target_field] for prompt_data in prompts}
@@ -70,7 +72,6 @@ if __name__ == "__main__":
 
                     prompt_id = file_path.split('/')[-1].split('_')[1].replace('.wav', '').replace("P","")  # "0001"
                     prompt_attr = get_prompt_attr(prompt_id)
-                    # print("prompt_id:", prompt_id, ",prompt_attr:", prompt_attr)
 
                     if prompt_attr not in results:
                         results[prompt_attr] = {
