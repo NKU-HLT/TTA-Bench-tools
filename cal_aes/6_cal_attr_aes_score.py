@@ -1,67 +1,29 @@
 """
 Calculate mean aes scores for each attribute of each dimension of each system
 """
+
+import os
 import json
-# prompt path
-ACC_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/acc_prompt.json"
-GENERAL_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/generalization_prompt.json"
-ROBUSTNESS_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/robustness_prompt.json"
-FAIRNESS_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/fairness_prompt_new.json"
+from utils.common import get_prompt_attr
+from utils.config import SYS_NAMES, EVAL_DIMS, AES_RESULTS_JSON_DIR, PREPARED_JSONL_DIR,AES_ATTR_FILE
 
-def load_prompts(prompt_path: str, target_field: str) -> dict:
-    with open(prompt_path, 'r', encoding='utf-8') as f:
-        prompts = json.load(f)
-    return {prompt_data['id']: prompt_data[target_field] for prompt_data in prompts}
 
-# key:prompt_id, value:attribute of dimension, e.g. "prompt_0001":"2" / "prompt_1801":"uppercase"
-acc_event_count_map = load_prompts(ACC_PROMPT_PATH, "event_count")
-acc_event_relation_map = load_prompts(ACC_PROMPT_PATH, "event_relation")
-general_event_count_map = load_prompts(GENERAL_PROMPT_PATH, "event_count")
-robustness_type_map = load_prompts(ROBUSTNESS_PROMPT_PATH, "perturbation_type")
-fairness_type_map = load_prompts(FAIRNESS_PROMPT_PATH, "notes")
-
-def get_prompt_attr(prompt_id: str) -> str:
+def summarize_aes_scores():
     """
-    input:prompt_id
-    output:prompt_text
+    汇总属性 AES 得分，生成系统维度级的汇总文件。
+    假设每个系统-维度的属性得分文件命名为 {sys}_{dim}_attr_scores.json
     """
-    if 1 <= int(prompt_id) <= 1500:
-        return acc_event_count_map[f"prompt_{prompt_id}"], acc_event_relation_map[f"prompt_{prompt_id}"]
-    elif 1501 <= int(prompt_id) <= 1800:
-        return general_event_count_map[f"prompt_{prompt_id}"]
-    elif 1801 <= int(prompt_id) <= 2100:
-        return robustness_type_map[f"prompt_{prompt_id}"]
-    elif 2101 <= int(prompt_id) <= 2400:
-        return fairness_type_map[f"prompt_{prompt_id}"]
-    else:
-        raise ValueError(f"Invalid prompt ID: {prompt_id}")
-    
-SYS_NANE=[
-    "audiogen",
-    "magnet","stable_audio","make_an_audio","make_an_audio_2",
-    "audioldm-l-full","audioldm2-large","auffusion-full","tango-full","tango2-full"
-]
-EVAL_DIM=[
-    "acc",
-    "generalization",
-    "robustness",
-    "fairness"
-]
 
-output_txt = f'/home/liucheng/project/tta-benchmark/audiobox-aesthetics/aes_results/aes_attribute_results.txt'  # 输出文件路径
-
-if __name__ == "__main__":
-
-    for sys_name in SYS_NANE:
-        for eval_dim in EVAL_DIM:
-            temp = sys_name + '_' + eval_dim
+    for sys_name in SYS_NAMES:
+        for eval_dim in EVAL_DIMS:
+            temp = sys_name + '_' + eval_dim + 'jsonl'
             """
             e.g.
             audiogen_acc
             audioldm_robustness
             """
-            input_jsonl = f'/home/liucheng/project/tta-benchmark/audiobox-aesthetics/prepared_jsonl/{temp}.jsonl'
-            score_jsonl = f'/home/liucheng/project/tta-benchmark/audiobox-aesthetics/aes_results/{temp}.jsonl'
+            input_jsonl = os.path.join(PREPARED_JSONL_DIR, temp)
+            score_jsonl = os.path.join(AES_RESULTS_JSON_DIR, temp)
 
             # key:prompt_attr,value:{key:total_ce/cu/pc/pq/count,value}
             results = {}
@@ -90,7 +52,7 @@ if __name__ == "__main__":
                     results[prompt_attr]['total_pq'] += score_data['PQ']
                     results[prompt_attr]['count'] += 1
 
-            with open(output_txt, 'a') as output_file:
+            with open(AES_ATTR_FILE, 'a') as output_file:
                 for attr, data in results.items():
                     count = data['count']
                     if count > 0:
@@ -115,3 +77,7 @@ if __name__ == "__main__":
                     output_file.write(f"Average PC: {avg_pc}\n")
                     output_file.write(f"Average PQ: {avg_pq}\n")
                     output_file.write("\n")
+
+
+if __name__ == "__main__":
+    summarize_aes_scores()

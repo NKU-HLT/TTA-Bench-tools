@@ -1,79 +1,67 @@
 """
 Calculate clap scores for all wav samples
 """
-from msclap import CLAP
-import json
-from typing import List
-import torch
 import os
-os.environ["CUDA_VISIBLE_DEVICES"]='1'
+import json
+import torch
+from msclap import CLAP
+from utils.config import SYS_NAMES, EVAL_DIMS, PATHS, PROMPT_RANGES
+from utils.common import load_prompts, ensure_dir
 
-ACC_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/acc_prompt.json"
-GENERAL_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/generalization_prompt.json"
-ROBUSTNESS_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/robustness_prompt.json"
-FAIRNESS_PROMPT_PATH = "/home/liucheng/project/tta-benchmark/prompt/fairness_prompt_new.json"
+# 设置 CUDA 设备
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
-def load_prompts(prompt_path: str) -> dict:
-    with open(prompt_path, 'r', encoding='utf-8') as f:
-        prompts = json.load(f)
-    return {prompt['id']: prompt['prompt_text'] for prompt in prompts}
-
-# key:"prompt_0001", value:"text description"
-acc_prompts = load_prompts(ACC_PROMPT_PATH)
-general_prompts = load_prompts(GENERAL_PROMPT_PATH)
-robustness_prompts = load_prompts(ROBUSTNESS_PROMPT_PATH)
-fairness_prompts = load_prompts(FAIRNESS_PROMPT_PATH)
+# 加载各维度的提示词
+acc_prompts = load_prompts(PATHS["acc_prompt_path"])
+general_prompts = load_prompts(PATHS["general_prompt_path"])
+robustness_prompts = load_prompts(PATHS["robustness_prompt_path"])
+fairness_prompts = load_prompts(PATHS["fairness_prompt_path"])
 
 def get_prompt_text(prompt_id: str) -> str:
-    if 1 <= int(prompt_id) <= 1500:
+    """根据 prompt ID 获取对应文本"""
+    pid = int(prompt_id)
+    if PROMPT_RANGES["acc"][0] <= pid <= PROMPT_RANGES["acc"][1]:
         return acc_prompts[f"prompt_{prompt_id}"]
-    elif 1501 <= int(prompt_id) <= 1800:
+    elif PROMPT_RANGES["generalization"][0] <= pid <= PROMPT_RANGES["generalization"][1]:
         return general_prompts[f"prompt_{prompt_id}"]
-    elif 1801 <= int(prompt_id) <= 2100:
+    elif PROMPT_RANGES["robustness"][0] <= pid <= PROMPT_RANGES["robustness"][1]:
         return robustness_prompts[f"prompt_{prompt_id}"]
-    elif 2101 <= int(prompt_id) <= 2400:
+    elif PROMPT_RANGES["fairness"][0] <= pid <= PROMPT_RANGES["fairness"][1]:
         return fairness_prompts[f"prompt_{prompt_id}"]
     else:
         raise ValueError(f"Invalid prompt ID: {prompt_id}")
 
-def cal_clap_score_for_jsonl(input_jsonl_path: str, result_jsonl: str):
+def cal_clap_score_for_jsonl(input_jsonl: str, result_jsonl: str):
+    """计算 JSONL 文件中所有音频的 CLAP 分数"""
+    ensure_dir(os.path.dirname(result_jsonl))
     clap_model = CLAP(version='2023', use_cuda=True)
 
-    with open(input_jsonl_path, 'r', encoding='utf-8') as f:
+    with open(input_jsonl, 'r', encoding='utf-8') as f:
         for line in f:
             data = json.loads(line)
-            file_path = data['path']    
-            # get prompt text
-            prompt_id = file_path.split('/')[-1].split('_')[1].replace('.wav', '').replace("P","")
+            file_path = data['path']
+            prompt_id = file_path.split('/')[-1].split('_')[1].replace('.wav','').replace('P','')
             prompt_text = get_prompt_text(prompt_id)
-            
-            # get audio_embeddings & text_embeddings
-            audio_embedding = clap_model.get_audio_embeddings([file_path])
-            text_embedding = clap_model.get_text_embeddings([prompt_text])
 
-            similarity_score = torch.nn.functional.cosine_similarity(audio_embedding, text_embedding).item()
-            print(f"similarity_score: {similarity_score}")
+            audio_emb = clap_model.get_audio_embeddings([file_path])
+            text_emb = clap_model.get_text_embeddings([prompt_text])
+            score = torch.nn.functional.cosine_similarity(audio_emb, text_emb).item()
 
-            with open(result_jsonl, 'a', encoding='utf-8') as outfile:
-                json.dump({"CLAP":similarity_score}, outfile)
-                outfile.write('\n')
+            print(f"{file_path} similarity_score: {score}")
+            with open(result_jsonl, 'a', encoding='utf-8') as out_f:
+                json.dump({"CLAP": score}, out_f)
+                out_f.write('\n')
 
-
-if __name__ == "__main__":
-    SYS_NANE=[
-    "audiogen","magnet","stable_audio","make_an_audio","make_an_audio_2",
-    "audioldm-l-full","audioldm2-large","auffusion-full","tango-full","tango2-full"
-    ]
-    
-    EVAL_DIM=[
-        "fairness","acc","generalization","robustness",
-    ]
-
-    for sys_name in SYS_NANE:
-        for eval_dim in EVAL_DIM:
-            temp = sys_name + '_' + eval_dim
-            input_jsonl = f'/home/liucheng/project/tta-benchmark/audiobox-aesthetics/prepared_jsonl/{temp}.jsonl'
-            result_jsonl = f'/home/liucheng/project/tta-benchmark/audiobox-aesthetics/clap_results/{temp}.jsonl'
+def calculate_all_clap_scores():
+    """循环计算所有系统、维度的 CLAP 分数"""
+    ensure_dir(PATHS["clap_results_dir"])
+    for sys_name in SYS_NAMES:
+        for eval_dim in EVAL_DIMS:
+            temp = f"{sys_name}_{eval_dim}"
+            input_jsonl = os.path.join(PATHS["prepared_jsonl_dir"], f"{temp}.jsonl")
+            result_jsonl = os.path.join(PATHS["clap_results_dir"], f"{temp}.jsonl")
             print(f"====={temp}=====")
             cal_clap_score_for_jsonl(input_jsonl, result_jsonl)
 
+if __name__ == "__main__":
+    calculate_all_clap_scores()

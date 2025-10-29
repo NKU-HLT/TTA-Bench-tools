@@ -1,8 +1,19 @@
-import csv
+"""
+删除错误的公平性数据
+"""
+import sys
 import os
+import csv
 import pandas as pd
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# 第一部分：读取第一个CSV文件，提取wav_name到集合中
+from config.config import SYS_IDS, PATHS
+from utils.common import ensure_dir_exists
+
+def extract_correct_prompt_ids(file_path):
+    """
+    读取第一个CSV文件，提取wav_name到集合中
+    """
 def extract_correct_prompt_ids(file_path):
     prompt_ids = set()
     df = pd.read_csv(file_path)
@@ -12,7 +23,10 @@ def extract_correct_prompt_ids(file_path):
         prompt_ids.add(prompt_id)
     return prompt_ids
 
-# 第二部分：原地修改其他CSV文件，删除不在集合中的行
+def filter_csv_files(file_path, prompt_ids):
+    """
+    原地修改CSV文件，删除不在集合中的行
+    """
 def filter_csv_files(file_path, wav_names):
     # 读取文件内容，指定编码为utf-8
     df = pd.read_csv(file_path, encoding='utf-8')
@@ -30,21 +44,27 @@ def filter_csv_files(file_path, wav_names):
     print(f"{file_path}过滤完成,删除了{delete_rows}条数据项")
     # 这个数应该等于废弃prompt个数(8+10+12)*3=90
 
-if __name__ == "__main__":
+def delete_wrong_fairness_data():
+    """
+    删除错误的公平性数据
+    """
     # 第一个CSV文件路径
-    first_csv_file = './preprocess_data/S007/fairness/all_mos_pro.csv'
-    # 其他CSV文件路径列表
-    SYS_NANE=["S001",
-              "S002","S003","S004","S005","S006","S008","S009","S010"
-              ]
-    for sys_id in SYS_NANE:
-        csv_file_path1 = os.path.join("./preprocess_data", sys_id, "fairness", 'all_mos_common.csv')
-        csv_file_path2 = os.path.join("./preprocess_data", sys_id, "fairness", 'all_mos_pro.csv')
+    first_csv_file = os.path.join(PATHS["preprocess_data_dir"], "S007", "fairness", 'all_mos_pro.csv')
 
-        # 提取wav_name到集合中
-        prompt_ids = extract_correct_prompt_ids(first_csv_file)
-        print(f"S007的fairness共包含{len(prompt_ids)}条prompt的wav文件")
+    # 提取wav_name到集合中
+    prompt_ids = extract_correct_prompt_ids(first_csv_file)
+    print(f"S007的fairness共包含{len(prompt_ids)}条prompt的wav文件")
 
-        # 过滤其他系统的fairness的common和pro.csv文件
+    # 过滤其他系统的fairness的common和pro.csv文件
+    for sys_id in SYS_IDS:
+        if sys_id == "S007":  # 跳过参考系统
+            continue
+
+        csv_file_path1 = os.path.join(PATHS["preprocess_data_dir"], sys_id, "fairness", 'all_mos_common.csv')
+        csv_file_path2 = os.path.join(PATHS["preprocess_data_dir"], sys_id, "fairness", 'all_mos_pro.csv')
+
         filter_csv_files(csv_file_path1, prompt_ids)
         filter_csv_files(csv_file_path2, prompt_ids)
+
+if __name__ == "__main__":
+    delete_wrong_fairness_data()
