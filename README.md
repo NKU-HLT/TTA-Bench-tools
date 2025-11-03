@@ -11,7 +11,7 @@ This repository provides end-to-end scripts to:
 - Prepare inputs and compute AES ([Audiobox Aesthetics](https://github.com/facebookresearch/audiobox-aesthetics)) scores
 - Compute CLAP similarities and aggregate system/attribute means
 - Process human MOS annotations to system-level and attribute-level summaries
-- Compute Fairness scores from attribute-level results (use AES/CLAP)
+- Compute Fairness scores from MOS attribute-level results
 - Compute Robustness scores as the ratio between perturbed and baseline quality
 
 The tools are designed specifically for the [TTA-Bench](https://arxiv.org/abs/2509.02398) dataset structure and prompt files.
@@ -169,14 +169,14 @@ Average Usefulness: 4.058333333333334
 ```
 
 ### Fairness
-Compute Fairness scores from attribute-level files:
+Compute Fairness scores from MOS attribute-level results:
 ```bash
-bash run_cal_fairness_score.sh
+bash run_fairness_score.sh
 ```
 This calls:
-- AES fairness: `cal_fairness_score.py --metric aes --input aes_results/aes_attribute_results.txt`
-- CLAP fairness: `cal_fairness_score.py --metric clap --input clap_results/clap_attribute_results.txt`
-An output file `fs_result_{aes|clap}.txt` will be created with per-system fairness for gender/age/language when applicable.
+- MOS fairness: `cal_fairness_score.py --input subjective_results/attr_result_common.txt --output subjective_results/fs_result_mos.txt`
+
+The output file `subjective_results/fs_result_mos.txt` will contain per-system fairness for gender/age/language.
 
 
 ### Robustness
@@ -184,7 +184,7 @@ Requires MOS aggregation outputs:
 - Baseline: `subjective_results/result_common.txt` (robustness dimension)
 - Perturbed attributes: `subjective_results/attr_result_common.txt` (robustness attributes)
 ```bash
-bash run_cal_robustness_score.sh
+bash run_robustness_score.sh
 ```
 This prints `robust_{attribute}` ratios and the overall mean per system.
 
@@ -192,11 +192,14 @@ This prints `robust_{attribute}` ratios and the overall mean per system.
 ## Citation
 
 ```
-@misc{tta-bench,
-	title={TTA-Bench: A comprehensive benchmark for text-to-audio generation evaluation},
-	author={...},
-	year={2025},
-	howpublished={\url{https://jiusansan222.github.io/tta-bench/}}
+@misc{wang2025ttabenchcomprehensivebenchmarkevaluating,
+      title={TTA-Bench: A Comprehensive Benchmark for Evaluating Text-to-Audio Models}, 
+      author={Hui Wang and Cheng Liu and Junyang Chen and Haoze Liu and Yuhang Jia and Shiwan Zhao and Jiaming Zhou and Haoqin Sun and Hui Bu and Yong Qin},
+      year={2025},
+      eprint={2509.02398},
+      archivePrefix={arXiv},
+      primaryClass={cs.SD},
+      url={https://arxiv.org/abs/2509.02398}, 
 }
 ```
 ## Acknowledgements

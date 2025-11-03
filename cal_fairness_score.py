@@ -1,119 +1,105 @@
-import numpy as np
-import itertools
-import re
 import argparse
+import itertools
 import os
+import re
+from typing import Dict, List
+
+import numpy as np
+
+from utils.config import PATHS
 
 
-def compute_fairness_score(A):
-    """
-    Compute the fairness score among subgroups.
-
-    Args:
-        A (list or np.ndarray): Scores of each subgroup.
-
-    Returns:
-        float: Fairness score (0 if less than two groups).
-    """
-    A = np.array(A)
-    if len(A) < 2:
-        return 0.0
-
-    total, count = 0.0, 0
-    for i, j in itertools.combinations(range(len(A)), 2):
-        diff = abs(A[i] - A[j])
-        max_val = max(A[i], A[j])
-        if max_val > 0:
-            total += (100 * diff) / max_val
-        count += 1
-
-    return total / count if count > 0 else 0.0
+GENDER = {"male", "female"}
+AGE = {"old", "middle", "youth", "child"}
+LANG = {"en", "zh", "other"}
 
 
-def parse_results(filename, metric):
-    """
-    Parse system-attribute scores from a result file.
-
-    Args:
-        filename (str): Path to the input result file.
-        metric (str): Metric name, e.g. 'AES' or 'CLAP'.
-
-    Returns:
-        list of (sysname, attribute, score)
-    """
-    with open(filename, "r") as f:
-        content = f.read()
-
-    sections = content.strip().split("\n\n")
-
-    # Pattern definition: for AES, we use Average PQ; for CLAP, use Average CLAP
-    value_label = "PQ" if metric.lower() == "aes" else "CLAP"
-    pattern = re.compile(
-        rf"=====(?P<sysname>[a-zA-Z0-9_-]+)_[a-zA-Z0-9_-]+_(?P<attribute>[a-zA-Z0-9_-]+)=====\s*"
-        rf"count: \d+\s*"
-        rf"Average {value_label}: (?P<pq_value>\d+\.\d+)"
-    )
-
-    results = []
-    for section in sections:
-        match = pattern.search(section)
-        if match:
-            sysname = match.group("sysname")
-            attribute = match.group("attribute")
-            pq_value = float(match.group("pq_value"))
-            results.append((sysname, attribute, pq_value))
-    return results
+def compute_fairness_score(values: List[float]) -> float:
+	values = np.array(values, dtype=float)
+	if values.size < 2:
+		return 0.0
+	total, count = 0.0, 0
+	for i, j in itertools.combinations(range(len(values)), 2):
+		a, b = values[i], values[j]
+		m = max(a, b)
+		if m > 0:
+			total += 100.0 * abs(a - b) / m
+		count += 1
+	return total / count if count else 0.0
 
 
-def main(args):
-    results = parse_results(args.input, args.metric)
-    system_scores = {}
+def parse_mos_attr_file(filename: str):
+	with open(filename, "r", encoding="utf-8") as f:
+		content = f.read().strip()
+	sections = content.split("\n\n") if content else []
 
-    for sysname, attribute, pq_value in results:
-        if sysname not in system_scores:
-            system_scores[sysname] = {
-                "gender_scores": [],
-                "age_scores": [],
-                "language_scores": []
-            }
+	# Capture system id, dimension, attribute, and quality value
+	pattern = re.compile(
+		r"=====(?P<sysid>[A-Za-z0-9_-]+)_(?P<dim>[A-Za-z0-9_-]+)_(?P<attr>[A-Za-z0-9_-]+)=====\s*"
+		r"count: (?P<count>\d+)\s*"
+		r"Average Complexity: (?P<complexity>\d+\.\d+)\s*"
+		r"Average Enjoyment: (?P<enjoyment>\d+\.\d+)\s*"
+		r"Average Quality: (?P<quality>\d+\.\d+)\s*"
+		r"Average Alignment: (?P<alignment>\d+\.\d+)\s*"
+		r"Average Usefulness: (?P<usefulness>\d+\.\d+)\s*",
+		re.MULTILINE,
+	)
 
-        if attribute in ["male", "female"]:
-            system_scores[sysname]["gender_scores"].append(pq_value)
-        elif attribute in ["old", "middle", "youth", "child"]:
-            system_scores[sysname]["age_scores"].append(pq_value)
-        elif attribute in ["en", "zh", "other"]:
-            system_scores[sysname]["language_scores"].append(pq_value)
+	records = []
+	for section in sections:
+		m = pattern.search(section)
+		if not m:
+			continue
+		sysid = m.group("sysid")
+		dim = m.group("dim")
+		attr = m.group("attr")
+		quality = float(m.group("quality"))
+		records.append((sysid, dim, attr, quality))
+	return records
 
-    # Output file path
-    output_file = f"fs_result_{args.metric.lower()}.txt"
-    os.makedirs(os.path.dirname(output_file) or ".", exist_ok=True)
 
-    with open(output_file, "a") as f:
-        for sysname, scores in system_scores.items():
-            fairness_gender = compute_fairness_score(scores["gender_scores"])
-            fairness_age = compute_fairness_score(scores["age_scores"])
-            fairness_lang = compute_fairness_score(scores["language_scores"])
+def main():
+	parser = argparse.ArgumentParser(description="Compute fairness scores from MOS attribute results.")
+	parser.add_argument("--input", type=str, default=os.path.join(PATHS["subjective_result_dir"], "attr_result_common.txt"),
+						help="Path to MOS attribute result file (default: subjective_results/attr_result_common.txt)")
+	parser.add_argument("--output", type=str, default=os.path.join(PATHS["subjective_result_dir"], "fs_result_mos.txt"),
+						help="Path to output file (default: subjective_results/fs_result_mos.txt)")
+	args = parser.parse_args()
 
-            print(f"[{args.metric}] System: {sysname}")
-            print(f"  Gender Fairness: {fairness_gender:.2f}")
-            print(f"  Age Fairness: {fairness_age:.2f}")
-            print(f"  Language Fairness: {fairness_lang:.2f}")
+	records = parse_mos_attr_file(args.input)
+	# Filter fairness dimension only
+	fairness_records = [(s, a, q) for (s, d, a, q) in records if d == "fairness"]
 
-            f.write(
-                f"{sysname}, {fairness_gender:.2f}, "
-                f"{fairness_age:.2f}, {fairness_lang:.2f}\n"
-            )
+	# Aggregate per system
+	system_scores: Dict[str, Dict[str, List[float]]] = {}
+	for sysid, attr, quality in fairness_records:
+		entry = system_scores.setdefault(sysid, {
+			"gender": [],
+			"age": [],
+			"language": [],
+		})
+		if attr in GENDER:
+			entry["gender"].append(quality)
+		elif attr in AGE:
+			entry["age"].append(quality)
+		elif attr in LANG:
+			entry["language"].append(quality)
+
+	# Compute and write results
+	os.makedirs(os.path.dirname(args.output) or ".", exist_ok=True)
+	with open(args.output, "w", encoding="utf-8") as f:
+		for sysid, groups in system_scores.items():
+			fair_gender = compute_fairness_score(groups["gender"]) if groups["gender"] else 0.0
+			fair_age = compute_fairness_score(groups["age"]) if groups["age"] else 0.0
+			fair_lang = compute_fairness_score(groups["language"]) if groups["language"] else 0.0
+
+			print(f"[MOS] System: {sysid}")
+			print(f"  Gender Fairness: {fair_gender:.2f}")
+			print(f"  Age Fairness: {fair_age:.2f}")
+			print(f"  Language Fairness: {fair_lang:.2f}")
+
+			f.write(f"{sysid}, {fair_gender:.2f}, {fair_age:.2f}, {fair_lang:.2f}\n")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Compute fairness scores for different metrics.")
-    parser.add_argument(
-        "--metric", type=str, required=True, choices=["aes", "clap"],
-        help="Type of score source (aes or clap)."
-    )
-    parser.add_argument(
-        "--input", type=str, required=True,
-        help="Path to the attribute result file."
-    )
-    args = parser.parse_args()
-    main(args)
+	main()
