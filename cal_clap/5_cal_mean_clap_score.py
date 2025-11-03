@@ -23,7 +23,7 @@ def calculate_mean_clap_scores():
                         count += 1
                 avg = total / count if count > 0 else 0
                 print(f"====={temp}=====")
-                print(f"count:{count} Average CLAP:{avg}")
+                print(f"count: {count} Average CLAP: {avg}")
                 f.write(f"{temp}\n{avg}\n")
 
 if __name__ == "__main__":

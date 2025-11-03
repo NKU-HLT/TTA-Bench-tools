@@ -5,24 +5,17 @@ Calculate mean aes scores for each attribute of each dimension of each system
 import os
 import json
 from utils.common import get_prompt_attr
-from utils.config import SYS_NAMES, EVAL_DIMS, AES_RESULTS_JSON_DIR, PREPARED_JSONL_DIR,AES_ATTR_FILE
+from utils.config import SYS_NAMES, EVAL_DIMS, AES_RESULTS_JSON_DIR, PATHS, AES_ATTR_FILE
 
 
 def summarize_aes_scores():
-    """
-    汇总属性 AES 得分，生成系统维度级的汇总文件。
-    假设每个系统-维度的属性得分文件命名为 {sys}_{dim}_attr_scores.json
-    """
+    """Aggregate attribute-level AES metrics for each system x dimension."""
 
     for sys_name in SYS_NAMES:
         for eval_dim in EVAL_DIMS:
-            temp = sys_name + '_' + eval_dim + 'jsonl'
-            """
-            e.g.
-            audiogen_acc
-            audioldm_robustness
-            """
-            input_jsonl = os.path.join(PREPARED_JSONL_DIR, temp)
+            temp = f"{sys_name}_{eval_dim}.jsonl"
+            # e.g. audiogen_acc.jsonl, audioldm_robustness.jsonl
+            input_jsonl = os.path.join(PATHS["prepared_jsonl_dir"], temp)
             score_jsonl = os.path.join(AES_RESULTS_JSON_DIR, temp)
 
             # key:prompt_attr,value:{key:total_ce/cu/pc/pq/count,value}
@@ -30,8 +23,8 @@ def summarize_aes_scores():
 
             with open(input_jsonl, 'r') as input_file, open(score_jsonl, 'r') as score_file:
                 for input_line, score_line in zip(input_file, score_file):
-                    input_data = json.loads(input_line)  # {"path": "/home/liucheng/project/tta-benchmark/samples/audiogen/acc/S001_P0422.wav"}
-                    score_data = json.loads(score_line)  # {"CE": 2.626478672027588, "CU": 4.120411396026611, "PC": 3.2657086849212646, "PQ": 4.992600440979004}
+                    input_data = json.loads(input_line)  # {"path": "/path/to/.../S001_P0422.wav"}
+                    score_data = json.loads(score_line)  # {"CE": ..., "CU": ..., "PC": ..., "PQ": ...}
 
                     file_path = input_data['path']
                     prompt_id = file_path.split('/')[-1].split('_')[1].replace('.wav', '').replace("P","")  # "0001"
@@ -52,7 +45,8 @@ def summarize_aes_scores():
                     results[prompt_attr]['total_pq'] += score_data['PQ']
                     results[prompt_attr]['count'] += 1
 
-            with open(AES_ATTR_FILE, 'a') as output_file:
+            # Append to a single attribute result file used by fairness calculator
+            with open(AES_ATTR_FILE, 'a', encoding='utf-8') as output_file:
                 for attr, data in results.items():
                     count = data['count']
                     if count > 0:
@@ -63,14 +57,15 @@ def summarize_aes_scores():
                     else:
                         avg_ce = avg_cu = avg_pc = avg_pq = 0
 
-                    print(f"====={temp}_{attr}=====")
-                    print(f"count:{count}")
+                    tag = f"{sys_name}_{eval_dim}"
+                    print(f"====={tag}_{attr}=====")
+                    print(f"count: {count}")
                     print(f"Average CE: {avg_ce}")
                     print(f"Average CU: {avg_cu}")
                     print(f"Average PC: {avg_pc}")
                     print(f"Average PQ: {avg_pq}")
                     
-                    output_file.write(f"====={temp}_{attr}=====\n")
+                    output_file.write(f"====={tag}_{attr}=====\n")
                     output_file.write(f"count: {count}\n")
                     output_file.write(f"Average CE: {avg_ce}\n")
                     output_file.write(f"Average CU: {avg_cu}\n")

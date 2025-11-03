@@ -1,5 +1,5 @@
 """
-Calculate mean aes scores for each dimension of each system
+Step 3: Calculate mean AES metrics (CE/CU/PC/PQ) per system and dimension.
 """
 import os
 import json
@@ -7,7 +7,7 @@ from utils.config import SYS_NAMES, EVAL_DIMS, AES_RESULT_FILE, AES_RESULTS_JSON
 from utils.common import ensure_dir
 
 def summarize_aes_scores():
-    """汇总每个系统的平均 AES 指标"""
+    """Aggregate mean AES metrics for each system x dimension."""
     outfile = AES_RESULT_FILE
     ensure_dir(os.path.dirname(outfile))
 
@@ -18,7 +18,7 @@ def summarize_aes_scores():
                 result_jsonl = os.path.join(AES_RESULTS_JSON_DIR, f"{tag}.jsonl")
 
                 if not os.path.exists(result_jsonl):
-                    print(f"警告：{result_jsonl} 不存在，跳过")
+                    print(f"[Warn] Missing: {result_jsonl}, skip.")
                     continue
 
                 total_ce = total_cu = total_pc = total_pq = count = 0
@@ -41,15 +41,15 @@ def summarize_aes_scores():
                     avg_ce = avg_cu = avg_pc = avg_pq = 0
 
                 print(f"\n==== {tag} ====")
-                print(f"样本数: {count}")
-                print(f"平均 CE: {avg_ce:.4f}")
-                print(f"平均 CU: {avg_cu:.4f}")
-                print(f"平均 PC: {avg_pc:.4f}")
-                print(f"平均 PQ: {avg_pq:.4f}")
+                print(f"count: {count}")
+                print(f"Average CE: {avg_ce:.4f}")
+                print(f"Average CU: {avg_cu:.4f}")
+                print(f"Average PC: {avg_pc:.4f}")
+                print(f"Average PQ: {avg_pq:.4f}")
 
                 f_out.write(f"{tag}\n{avg_ce},{avg_cu},{avg_pc},{avg_pq}\n")
 
-    print(f"\n汇总结果已保存至 {outfile}")
+    print(f"\nSummary saved to {outfile}")
 
 if __name__ == "__main__":
     summarize_aes_scores()

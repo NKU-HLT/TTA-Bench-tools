@@ -56,9 +56,9 @@ def calculate_attr_clap_scores():
                 for attr, data in results.items():
                     avg = data['total_clap']/data['count'] if data['count']>0 else 0
                     print(f"====={temp}_{attr}=====")
-                    print(f"count:{data['count']} Average CLAP:{avg}")
+                    print(f"count: {data['count']} Average CLAP: {avg}")
                     out_f.write(f"====={temp}_{attr}=====\n")
-                    out_f.write(f"count:{data['count']}\nAverage CLAP:{avg}\n\n")
+                    out_f.write(f"count: {data['count']}\nAverage CLAP: {avg}\n\n")
 
 if __name__ == "__main__":
     calculate_attr_clap_scores()

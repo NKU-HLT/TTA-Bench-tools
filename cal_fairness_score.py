@@ -46,11 +46,12 @@ def parse_results(filename, metric):
 
     sections = content.strip().split("\n\n")
 
-    # Pattern differs only in the metric field
+    # Pattern definition: for AES, we use Average PQ; for CLAP, use Average CLAP
+    value_label = "PQ" if metric.lower() == "aes" else "CLAP"
     pattern = re.compile(
-        rf"=====(?P<sysname>[a-zA-Z0-9_-]+)_fairness_(?P<attribute>\w+)=====\s*"
+        rf"=====(?P<sysname>[a-zA-Z0-9_-]+)_[a-zA-Z0-9_-]+_(?P<attribute>[a-zA-Z0-9_-]+)=====\s*"
         rf"count: \d+\s*"
-        rf"Average {metric.upper()}: (?P<pq_value>\d+\.\d+)"
+        rf"Average {value_label}: (?P<pq_value>\d+\.\d+)"
     )
 
     results = []
