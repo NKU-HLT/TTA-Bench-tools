@@ -6,6 +6,11 @@
 [![Project Page](https://img.shields.io/badge/Project-Website-blue.svg)](https://jiusansan222.github.io/tta-bench/)
 [![Paper](https://img.shields.io/badge/Paper-arXiv%3A2509.02398-b31b1b.svg)](https://arxiv.org/abs/2509.02398)
 
+
+## 🔥 News
+- 2025.11.11: TTA-Bench is accepted by AAAI 2026 !
+- 2025.09.02: Our paper is released on [arXiv](https://arxiv.org/abs/2509.02398). 🎉
+
 ## Overview
 This repository provides end-to-end scripts to:
 - Prepare inputs and compute AES ([Audiobox Aesthetics](https://github.com/facebookresearch/audiobox-aesthetics)) scores
